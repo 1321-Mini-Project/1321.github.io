@@ -290,7 +290,6 @@ async function deleteGuestBook(guestBookId) {
     }
 }
 
-
 //방명록 수정
 async function updateGuestBook(guestBookDiv, guestBookId) {
 
@@ -349,7 +348,7 @@ async function saveEdits(guestBookDiv, guestBookId) {
         return;
     }
 
-    // Firestore 데이터베이스에 업데이트
+    //데이터베이스에 업데이트
     updateFirestoreGuestBook(guestBookId, newContent);
 }
 
