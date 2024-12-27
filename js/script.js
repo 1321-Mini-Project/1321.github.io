@@ -2,6 +2,7 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-
 import {getFirestore} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import {collection, addDoc} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import {getDocs} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import {doc, getDoc, deleteDoc, updateDoc} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBwVoNHZU4uG5DqKA-rT8X_adR7kIRCcR8",
@@ -62,17 +63,20 @@ querySnapshot.forEach((doc) => {
     let guest_book_id = doc.id;
 
     let tempHtml = ` 
-            <div id="guestBookCont">
+            <div class="guestBookCont">
                 <div id="guestBookInfo" class="row g-3">
                     <input type="hidden" class="form-control" id="passwd" placeholder="비밀번호">
                     <div class="col-sm-2">
-                        <p class="guest_book_name">${guest_book_name}</p>
+                        <p class="guest_book_name" id="guest_book_name_${guest_book_id}">${guest_book_name}</p>
                     </div>
                     <div class="col-sm-6">
-                        <p class="guest_book_name">${guest_book_content}</p>
+                        <p class="guest_book_content" id="guest_book_content_${guest_book_id}">${guest_book_content}</p>
                     </div>
                     <div class="col-sm-2">
-                        <button class="btn btn-primary mb-3 " id="guest_book_modi" data-id="${guest_book_id}">수정</button>
+                        <input type="password" class="form-control" id="guest_book_content_password_${guest_book_id}" placeholder="비밀번호(숫자 6자리)">
+                    </div>
+                    <div class="col-sm-2">
+                        <button class="btn btn-primary mb-3" id="guest_book_modi" data-id="${guest_book_id}">수정</button>
                         <button class="btn btn-secondary mb-3 " id="guest_book_del" data-id="${guest_book_id}">삭제</button>
                     </div>
                 </div>
@@ -116,102 +120,99 @@ $('#guest_book_save_btn').click(async function () {
     await saveGuestBook(guestBookData);
 });
 
-$('#guest_book_modi').click(async function () {
-    const guestBookDiv = event.target.closest(".guestbook_entry"); // 클릭된 항목 가져오기
-    const guestBookId = $(this).get().id;
-    if(matchPassword()){
+$(document).on("click", "#guest_book_modi", async function (event) {
+    const guestBookDiv = event.target.closest(`.guestBookCont`);// 클릭된 항목 가져오기
+    const guestBookId = $(this).data("id");
+    const guestBookPw = $(`#guest_book_content_password_${guestBookId}`).val();
+    //길이 확인
+    if (guestBookPw.length !== 6) {
+        alert("비밀번호의 길이는 6자리여야 합니다!")
+        return false;
+    }
+
+    //숫자인지 확인
+    for (let i = 0; i < guestBookPw.length; i++) {
+        const char = guestBookPw[i];
+        if (char < '0' || char > '9') {
+            alert("비밀번호는 숫자여야 합니다!")
+            return false;
+        }
+    }
+
+
+    if (await matchPassword(guestBookId, guestBookPw)) {
         //비밀번호가 일치하면 해당 글을 input에 출력
         await updateGuestBook(guestBookDiv, guestBookId);
     }
 });
 
-$('#guest_book_del').click(async function () {
-    const guestBookDiv = event.target.closest(".guestbook_entry"); // 클릭된 항목 가져오기
-    const guestBookId = $(this).get().id;
-    if(matchPassword(guestBookId)){
+$(document).on("click", "#guest_book_del", async function () {
+    const guestBookId = $(this).data("id");
+    const guestBookPw = $(`#guest_book_content_password_${guestBookId}`).val();
+
+    if (guestBookPw === "") {
+        alert("비밀번호를 입력하세요.");
+        return;
+    }
+    //길이 확인
+    if (guestBookPw.length !== 6) {
+        alert("비밀번호의 길이는 6자리여야 합니다!")
+        return;
+    }
+
+    //숫자인지 확인
+    for (let i = 0; i < guestBookPw.length; i++) {
+        const char = guestBookPw[i];
+        if (char < '0' || char > '9') {
+            alert("비밀번호는 숫자여야 합니다!")
+            return;
+        }
+    }
+
+
+    if (await matchPassword(guestBookId, guestBookPw)) {
         //비밀번호가 일치하면 해당 글을 input에 출력
-        await deleteGuestBook(guestBookId);
+        deleteGuestBook(guestBookId);
     }
 });
 
-async function matchPassword(guestBookId){
-
-    let inputpassword = await getPassword();
-    console.log(inputpassword);
+async function matchPassword(guestBookId, guestBookPw){
     try {
         //Firestore에서 해당 방명록 조회
-        const doc = await db.collection('guest_book').doc(guestBookId).get();
+        const docRef = doc(db, "guest_book", guestBookId);
+        const docSnap = await getDoc(docRef);
         //만약 존재하지 않는다면
-        if (!doc.exists) {
-            console.error("Entry not found!");
+        if (!docSnap.exists) {
+            console.error("guest book not found!");
             alert("해당 글을 찾을 수 없습니다.");
             return false;
         }
+        const guestBookData = docSnap.data();
 
         //입력된 비밀번호 암호화
         let input_password = await crypto.subtle.digest(
             'SHA-256',
-            new TextEncoder().encode(inputPassword)
+            new TextEncoder().encode(guestBookPw)
         );
 
         //암호화된 비밀번호 String형식 16진수로 변환
-        const password_str = Array.from(new Uint8Array(inputPassword))
+        const password_str = Array.from(new Uint8Array(input_password))
             .map(byte => byte.toString(16).padStart(2, '0'))
             .join('');
 
         //저장된 비밀번호와 비교
-        if (data.password !== password_str) {
-            console.error("Password mismatch!");
+        if (guestBookData.guest_book_password !== password_str) {
+            console.error("password mismatch!");
             alert("비밀번호가 일치하지 않습니다.");
             return false;
         }
 
         return true;
     } catch (error) {
-        console.error("Error deleting entry:", error);
+        console.error("Error deleting :", error);
         alert("글 삭제 중 오류가 발생했습니다.");
     }
 }
-
-async function getPassword() {
-
-
-    return new Promise((resolve, reject) => {
-        $("#passwd").submit(function (event) {
-            event.preventDefault(); // 폼 기본 동작 막기
-
-            const inputPassword = $("#inputPassword").val(); // 입력된 비밀번호 가져오기
-            if (!inputPassword) {
-                alert("비밀번호를 입력하세요.");
-                reject("비밀번호가 비어 있습니다.");
-                return;
-            }
-
-            // 길이 확인
-            if (inputPassword.length !== 6) {
-                alert("비밀번호의 길이는 6자리여야 합니다!");
-                reject("비밀번호 길이 오류");
-                return;
-            }
-
-            // 숫자인지 확인
-            for (let i = 0; i < inputPassword.length; i++) {
-                const char = inputPassword[i];
-                if (char < '0' || char > '9') {
-                    alert("비밀번호는 숫자여야 합니다!");
-                    reject("비밀번호 형식 오류");
-                    return;
-                }
-            }
-
-            // 입력된 비밀번호 반환
-            resolve(inputPassword);
-        });
-    });
-}
-
-
-
 
 // 데이터 추가
 async function saveGuestBook(guestBookData) {
@@ -238,7 +239,7 @@ async function saveGuestBook(guestBookData) {
         alert("글이 성공적으로 등록 되었습니다!");
         window.location.reload();
     } catch (e) {
-        console.error("Error adding document: ", e);
+        console.error("Error adding : ", e);
     }
 }
 
@@ -247,19 +248,20 @@ async function saveGuestBook(guestBookData) {
 async function deleteGuestBook(guestBookId) {
     try {
         //Firestore에서 해당 방명록 조회
-        const doc = await db.collection('guest_book').doc(guestBookId).get();
+        const docRef = doc(db, "guest_book", guestBookId);
+        const docSnap = await getDoc(docRef);
         //만약 존재하지 않는다면
-        if (!doc.exists) {
-            console.error("Entry not found!");
+        if (!docSnap.exists) {
+            console.error("guest book not found!");
             alert("해당 글을 찾을 수 없습니다.");
             return;
         }
 
-        await db.collection('guest_book').doc(guestBookId).delete();
-        console.log("Entry deleted successfully!");
+        await deleteDoc(doc(db, "guest_book", guestBookId));
         alert("글이 성공적으로 삭제되었습니다.");
+        window.location.reload();
     } catch (error) {
-        console.error("Error deleting entry:", error);
+        console.error("Error deleting :", error);
         alert("글 삭제 중 오류가 발생했습니다.");
     }
 }
@@ -268,126 +270,101 @@ async function deleteGuestBook(guestBookId) {
 //방명록 수정
 async function updateGuestBook(guestBookDiv, guestBookId) {
 
-    const nameElem = guestBookDiv.querySelector(".guestbook_name");
-    const contentElem = guestBookDiv.querySelector(".guestbook_content");
+    const contentElem = guestBookDiv.querySelector(`#guest_book_content_${guestBookId}`);
 
-    // 기존 텍스트를 입력 필드로 변환
-    const nameInput = document.createElement("input");
-    nameInput.type = "text";
-    nameInput.value = nameElem.textContent;
+    if (!contentElem) {
+        console.error(`guest_book_content_${guestBookId} not found.`);
+        return;
+    }
 
-    const contentInput = document.createElement("textarea");
-    contentInput.textContent = contentElem.textContent;
+    // 현재 텍스트 가져오기
+    const currentContent = contentElem.textContent;
 
-    // 기존 내용을 교체
-    guestBookDiv.replaceChild(nameInput, nameElem);
-    guestBookDiv.replaceChild(contentInput, contentElem);
+    // 새 input 태그 생성
+    const inputElement = document.createElement("input");
+    inputElement.type = "text";
+    inputElement.className = "form-control";
+    inputElement.id = `guest_book_content_input_${guestBookId}`;
+    inputElement.value = currentContent;
+
+    // input 태그를 기존 p 태그로 교체
+    const contentParentNode = contentElem.parentNode;
+    contentParentNode.replaceChild(inputElement, contentElem);
+    
+    // 비밀 번호 비활성화
+    const passwordField = guestBookDiv.querySelector(`#guest_book_content_password_${guestBookId}`);
+    if (passwordField) {
+        passwordField.disabled = true;
+    }
 
     // 수정 버튼을 저장 버튼으로 변경
+    const editButton = guestBookDiv.querySelector(`#guest_book_modi[data-id="${guestBookId}"]`);
+    const btnParentNode = editButton.parentNode;
     const saveButton = document.createElement("button");
     saveButton.textContent = "저장";
-    saveButton.classList.add("save_button");
-
-    const editButton = entryDiv.querySelector(".edit_button");
-    guestBookDiv.replaceChild(saveButton, editButton);
-
+    saveButton.className = "btn btn-success mb-3";
+    saveButton.id = "guest_book_save";
+    saveButton.dataset.id = guestBookId;
+    btnParentNode.replaceChild(saveButton, editButton);
     // 저장 버튼 클릭 이벤트 등록
-    saveButton.addEventListener("click", () => saveEdits(guestBookDiv, guestBookId, nameInput, contentInput, password_str));
+    saveButton.addEventListener("click", () => saveEdits(guestBookDiv, guestBookId));
 }
 
-async function saveEdits(guestBookDiv, guestBookId, nameInput, contentInput, password_str) {
-    const updatedName = nameInput.value.trim();
-    const updatedContent = contentInput.value.trim();
+async function saveEdits(guestBookDiv, guestBookId) {
+    // input 태그 가져오기
+    const inputElement = guestBookDiv.querySelector(`#guest_book_content_input_${guestBookId}`);
+    if (!inputElement) {
+        console.error(`guestBookId ${guestBookId} not found.`);
+        return;
+    }
 
+    // 새 내용 가져오기
+    const newContent = inputElement.value.trim();
+    if (!newContent) {
+        alert("내용을 입력해야 합니다.");
+        return;
+    }
+
+    // Firestore 데이터베이스에 업데이트
+    updateFirestoreGuestBook(guestBookId, newContent);
+
+    // p 태그 생성
+    const contentElement = document.createElement("p");
+    contentElement.className = "guest_book_content";
+    contentElement.id = `guest_book_content_${guestBookId}`;
+    contentElement.textContent = newContent;
+
+    // input 태그를 p 태그로 교체
+    const parentNode = inputElement.parentNode;
+    parentNode.replaceChild(contentElement, inputElement);
+    
+    //비밀번호 필드 재활성화
+    const passwordField = guestBookDiv.querySelector(`#guest_book_content_password_${guestBookId}`);
+    if (passwordField) {
+        passwordField.disabled = false;
+        passwordField.value = "";
+    }
+
+    // 저장 버튼을 수정 버튼으로 교체
+    const saveButton = guestBookDiv.querySelector(`#guest_book_save[data-id="${guestBookId}"]`);
+    const editButton = document.createElement("button");
+    editButton.className = "btn btn-primary mb-3";
+    editButton.id = "guest_book_modi";
+    editButton.dataset.id = guestBookId;
+    editButton.textContent = "수정";
+
+    const btnParentNode = saveButton.parentNode;
+    btnParentNode.replaceChild(editButton, saveButton);
+}
+
+async function updateFirestoreGuestBook(guestBookId, newContent) {
     try {
-        // Firestore에서 해당 항목만 업데이트
-        await db.collection("guest_book").doc(guestBookId).update({
-
-            guest_book_name: updatedName,
-            guest_book_content: updatedContent,
-            guest_book_password: password_str,
-            guest_book_timestamp: new Date().toLocaleString()
+        const docRef = doc(db, "guest_book", guestBookId);
+        await updateDoc(docRef, {
+            guest_book_content: newContent,
         });
-
-        // 입력 필드를 다시 텍스트로 변경
-        const nameElem = document.createElement("p");
-        nameElem.textContent = updatedName;
-        nameElem.classList.add("guestbook_name");
-
-        const contentElem = document.createElement("p");
-        contentElem.textContent = updatedContent;
-        contentElem.classList.add("guestbook_content");
-
-        // 입력 필드 교체
-        guestBookDiv.replaceChild(nameElem, nameInput);
-        guestBookDiv.replaceChild(contentElem, contentInput);
-
-        // 저장 버튼을 다시 수정 버튼으로 변경
-        const editButton = document.createElement("button");
-        editButton.textContent = "수정";
-        editButton.classList.add("edit_button");
-
-        const saveButton = guestBookDiv.querySelector(".save_button");
-        guestBookDiv.replaceChild(editButton, saveButton);
-
-        alert("수정이 완료되었습니다!");
+        alert("글 수정이 완료 되었습니다!");
     } catch (error) {
-        console.error("Error updating document: ", error);
-        alert("수정 중 오류가 발생했습니다.");
+        alert("Firestore 업데이트 중 오류가 발생했습니다.");
     }
-}
-
-/*
-document.getElementById('guestbook-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    const name = document.getElementById('name').value;
-    const message = document.getElementById('message').value;
-
-    if (name && message) {
-        const entryList = document.getElementById('entries-list');
-
-        const newEntry = document.createElement('li');
-        newEntry.innerHTML = `<strong>${name}</strong>: ${message}`;
-
-        entryList.appendChild(newEntry);
-
-        // 폼 초기화
-        document.getElementById('guestbook-form').reset();
-    } else {
-        alert('이름과 메시지를 모두 입력해주세요!');
-    }
-});
-*/
-
-
-//저장
-$(document).on("click", ".del", function () {
-    $(this).closest("#guestBookInfo").remove();
-});
-
-function save() {
-    let inputName = $("#inputName").val();
-    let inputCont = $("#inputCont").val();
-
-    let temp = `
-        <div id="guestBookCont">
-            <div id="guestBookInfo" class="row g-3">
-                <input type="hidden" class="form-control" id="inputpass" placeholder="비밀번호" >
-                <div class="col-sm-3">
-                    <label for="inputPassword2" class="visually-hidden">name</label>
-                    <input type="text" class="form-control" id="inputName" placeholder="닉네임"  value="${inputName}">
-                </div>
-                <div class="col-sm-7">
-                    <label for="inputPassword2" class="visually-hidden">text</label>
-                    <input type="text" class="form-control" id="inputCont" placeholder="내용 작성"  value="${inputCont}">
-                </div>
-                <div class="col-sm-2">
-                    <button class="btn btn-primary mb-3 saveBtn" id="modi" data-bs-toggle="modal" data-bs-target="#pwdModal">수정</button>
-                    <button class="btn btn-secondary mb-3 del" id="del" data-bs-toggle="modal" data-bs-target="#pwdModal">삭제</button>
-                </div>
-            </div>
-        </div>`;
-
-    $(".cont").append(temp);
 }

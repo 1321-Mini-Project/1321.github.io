@@ -112,6 +112,11 @@ body {
     color: black;
     text-decoration: none;
 }
+
+.member .col .card >img {
+    width: 400px;
+    height: 300px;
+}
 /*-----Member Intro-----*/
 
 
