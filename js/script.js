@@ -18,12 +18,16 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 function setMode(mode) {
+    
+    //라이트 모드
     if (mode === "light") {
         $(".card").css("background-color", "#ffffff");
         $(".card").css("color", "#000000");
         $("body").css("background-color", "#f8f9fa");
         $(".title").css("color", "#000000");
-    } else if (mode === "dark") {
+    } 
+    //다크 모드
+    else if (mode === "dark") {
         $(".card").css("background-color", "#333333");
         $(".card").css("color", "#ffffff");
         $("body").css("background-color", "#222222");
@@ -43,7 +47,7 @@ $("#lightBtn").click(function () {
     setMode("light");
 });
 
-// 다크 모드 카드 배경색
+// 다크 모드
 $("#darkBtn").click(function () {
     setMode("dark");
 });
@@ -54,11 +58,11 @@ $("#teamIntroBtn").click(function () {
     const $teamName = $("#teamName");
     const $teamIntro = $("#teamIntro");
 
-    // 1초 동안 팀 이름 숨기기
+    // 0.5초 동안 팀 이름 숨기기
     $teamName.fadeOut(500, function () {
         // 팀 소개 표시
         $teamIntro.fadeIn(500, function () {
-            // 3초 뒤 팀 소개 숨기기
+            // 2초 뒤 팀 소개 숨기기
             setTimeout(() => {
                 $teamIntro.fadeOut(500, function () {
                     // 다시 팀 이름 표시
@@ -70,16 +74,16 @@ $("#teamIntroBtn").click(function () {
 });
 
 // 데이터 읽기 및 카드 생성
+
+//timestamp를 기준으로 내림차순 정렬한 데이터 값 
 $(".guest_book_container").empty();
 const q = query(
-    collection(db, "guest_book"), // 컬렉션 이름
-    orderBy("guest_book_timestamp", "desc") // timestamp를 기준으로 내림차순 정렬
+    collection(db, "guest_book"),
+    orderBy("guest_book_timestamp", "desc")
 );
 const querySnapshot = await getDocs(q);
 
-
-
-
+//카드에 삽입 후 출력
 querySnapshot.forEach((doc) => {
 
     let guest_book_name = doc.data().guest_book_name;
@@ -108,13 +112,16 @@ querySnapshot.forEach((doc) => {
     $(".guest_book_container").append(tempHtml);
 });
 
+
+//방명록 글 저장 버튼 클릭
 $('#guest_book_save_btn').click(async function () {
 
     let guest_book_name = $("#guest_book_name").val();
     let guest_book_content = $("#guest_book_content").val();
     let guest_book_password = $("#guest_book_password").val();
     let guest_book_timestamp = new Date().toLocaleString()
-
+    
+    //빈 내용 없는지 확인
     if (!guest_book_name || !guest_book_content || !guest_book_password) {
         alert("모든 내용을 입력해 주세요!")
         return;
@@ -141,13 +148,18 @@ $('#guest_book_save_btn').click(async function () {
         guest_book_password: guest_book_password,
         guest_book_timestamp: guest_book_timestamp
     };
+    
+    //저장
     await saveGuestBook(guestBookData);
 });
 
-$(document).on("click", "#guest_book_modi", async function (event) {
+//글 수정 버튼 클릭
+$(document).on("click", "#guest_book_modi", async function (event){
     const guestBookDiv = event.target.closest(`.guestBookCont`);// 클릭된 항목 가져오기
-    const guestBookId = $(this).data("id");
+    const guestBookId = $(this).data("id"); //클릭된 항목의 ID 가져오기
+    //작성한 비밀번호 가져오기
     const guestBookPw = $(`#guest_book_content_password_${guestBookId}`).val();
+    
     //길이 확인
     if (guestBookPw.length !== 6) {
         alert("비밀번호의 길이는 6자리여야 합니다!")
@@ -162,16 +174,19 @@ $(document).on("click", "#guest_book_modi", async function (event) {
             return false;
         }
     }
-
-
+    
     if (await matchPassword(guestBookId, guestBookPw)) {
-        //비밀번호가 일치하면 해당 글을 input에 출력
+        //비밀번호가 일치하면 해당 글 업데이트
         await updateGuestBook(guestBookDiv, guestBookId);
     }
 });
 
+//글 삭제 버튼 클릭 시
 $(document).on("click", "#guest_book_del", async function () {
+
+    //클릭된 항목의 ID 가져오기
     const guestBookId = $(this).data("id");
+    //클릭된 항목의 비밀번호 가져오기
     const guestBookPw = $(`#guest_book_content_password_${guestBookId}`).val();
 
     if (guestBookPw === "") {
@@ -195,7 +210,7 @@ $(document).on("click", "#guest_book_del", async function () {
 
 
     if (await matchPassword(guestBookId, guestBookPw)) {
-        //비밀번호가 일치하면 해당 글을 input에 출력
+        //비밀번호가 일치하면 해당 글 삭제
         deleteGuestBook(guestBookId);
     }
 });
@@ -230,7 +245,9 @@ async function matchPassword(guestBookId, guestBookPw){
             alert("비밀번호가 일치하지 않습니다.");
             return false;
         }
-
+        
+        
+        //일치하면 true 반환
         return true;
     } catch (error) {
         console.error("Error deleting :", error);
@@ -238,20 +255,24 @@ async function matchPassword(guestBookId, guestBookPw){
     }
 }
 
-// 데이터 추가
+//방명록에 글 저장
 async function saveGuestBook(guestBookData) {
 
     let {guest_book_name, guest_book_content, guest_book_password, guest_book_timestamp} = guestBookData;
-
+    
+    //비밀번호 암호화
     const encrypted_password = await crypto.subtle.digest(
         'SHA-256',
         new TextEncoder().encode(guest_book_password)
     );
 
+    //암호화된 비밀번호 String형식 16진수로 변환
     const password_str = Array.from(new Uint8Array(encrypted_password))
         .map(byte => byte.toString(16).padStart(2, '0'))
         .join('');
-
+    
+    
+    //Firebase에 저장
     try {
         const docRef = await addDoc(collection(db, "guest_book"), {
             'guest_book_name': guest_book_name,
@@ -281,6 +302,7 @@ async function deleteGuestBook(guestBookId) {
             return;
         }
 
+        //존재 한다면 삭제
         await deleteDoc(doc(db, "guest_book", guestBookId));
         alert("글이 성공적으로 삭제되었습니다.");
         window.location.reload();
@@ -293,9 +315,11 @@ async function deleteGuestBook(guestBookId) {
 
 //방명록 수정
 async function updateGuestBook(guestBookDiv, guestBookId) {
-
+    
+    //해당 방명록의 글 부분 element 가져옴
     const contentElem = guestBookDiv.querySelector(`#guest_book_content_${guestBookId}`);
-
+    
+    //만약 존재 하지 않는 다면
     if (!contentElem) {
         console.error(`guest_book_content_${guestBookId} not found.`);
         return;
@@ -334,6 +358,7 @@ async function updateGuestBook(guestBookDiv, guestBookId) {
     saveButton.addEventListener("click", () => saveEdits(guestBookDiv, guestBookId));
 }
 
+//수정된 글 저장
 async function saveEdits(guestBookDiv, guestBookId) {
     // input 태그 가져오기
     const inputElement = guestBookDiv.querySelector(`#guest_book_content_input_${guestBookId}`);
@@ -349,11 +374,14 @@ async function saveEdits(guestBookDiv, guestBookId) {
         return;
     }
 
-    // Firestore 데이터베이스에 업데이트
+    // Firebase에 업데이트
     updateFirestoreGuestBook(guestBookId, newContent);
 }
 
+
+// Firebase에 업데이트
 async function updateFirestoreGuestBook(guestBookId, newContent) {
+    //id값을 이용해 타임스탬프 값과 글 내용 값 업데이트
     let guest_book_timestamp = new Date().toLocaleString();
 
     try {
