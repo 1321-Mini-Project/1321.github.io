@@ -2,7 +2,7 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-
 import {getFirestore} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import {collection, addDoc} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import {getDocs} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-import {doc, getDoc, deleteDoc, updateDoc} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import {doc, getDoc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBwVoNHZU4uG5DqKA-rT8X_adR7kIRCcR8",
@@ -17,18 +17,35 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+function setMode(mode) {
+    if (mode === "light") {
+        $(".card").css("background-color", "#ffffff");
+        $(".card").css("color", "#000000");
+        $("body").css("background-color", "#f8f9fa");
+        $(".title").css("color", "#000000");
+    } else if (mode === "dark") {
+        $(".card").css("background-color", "#333333");
+        $(".card").css("color", "#ffffff");
+        $("body").css("background-color", "#222222");
+        $(".title").css("color", "#ffffff");
+    }
+    localStorage.setItem("theme", mode); // 현재 모드 상태 저장
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const savedMode = localStorage.getItem("theme") || "light"; // 기본값은 "light"
+    setMode(savedMode);
+});
+
+
 // 라이트 모드
 $("#lightBtn").click(function () {
-    $(".card").css("background-color", "#ffffff");
-    $(".card").css("color", "#000000");
-    $("body").css("background-color", "#f8f9fa");
+    setMode("light");
 });
 
 // 다크 모드 카드 배경색
 $("#darkBtn").click(function () {
-    $(".card").css("background-color", "#333333");
-    $(".card").css("color", "#ffffff");
-    $("body").css("background-color", "#222222");
+    setMode("dark");
 });
 
 
@@ -54,7 +71,14 @@ $("#teamIntroBtn").click(function () {
 
 // 데이터 읽기 및 카드 생성
 $(".guest_book_container").empty();
-const querySnapshot = await getDocs(collection(db, "guest_book"));
+const q = query(
+    collection(db, "guest_book"), // 컬렉션 이름
+    orderBy("guest_book_timestamp", "desc") // timestamp를 기준으로 내림차순 정렬
+);
+const querySnapshot = await getDocs(q);
+
+
+
 
 querySnapshot.forEach((doc) => {
 
@@ -327,43 +351,20 @@ async function saveEdits(guestBookDiv, guestBookId) {
 
     // Firestore 데이터베이스에 업데이트
     updateFirestoreGuestBook(guestBookId, newContent);
-
-    // p 태그 생성
-    const contentElement = document.createElement("p");
-    contentElement.className = "guest_book_content";
-    contentElement.id = `guest_book_content_${guestBookId}`;
-    contentElement.textContent = newContent;
-
-    // input 태그를 p 태그로 교체
-    const parentNode = inputElement.parentNode;
-    parentNode.replaceChild(contentElement, inputElement);
-    
-    //비밀번호 필드 재활성화
-    const passwordField = guestBookDiv.querySelector(`#guest_book_content_password_${guestBookId}`);
-    if (passwordField) {
-        passwordField.disabled = false;
-        passwordField.value = "";
-    }
-
-    // 저장 버튼을 수정 버튼으로 교체
-    const saveButton = guestBookDiv.querySelector(`#guest_book_save[data-id="${guestBookId}"]`);
-    const editButton = document.createElement("button");
-    editButton.className = "btn btn-primary mb-3";
-    editButton.id = "guest_book_modi";
-    editButton.dataset.id = guestBookId;
-    editButton.textContent = "수정";
-
-    const btnParentNode = saveButton.parentNode;
-    btnParentNode.replaceChild(editButton, saveButton);
 }
 
 async function updateFirestoreGuestBook(guestBookId, newContent) {
+    let guest_book_timestamp = new Date().toLocaleString();
+
     try {
         const docRef = doc(db, "guest_book", guestBookId);
         await updateDoc(docRef, {
             guest_book_content: newContent,
+            guest_book_timestamp: guest_book_timestamp,
         });
+
         alert("글 수정이 완료 되었습니다!");
+        window.location.reload();
     } catch (error) {
         alert("Firestore 업데이트 중 오류가 발생했습니다.");
     }
