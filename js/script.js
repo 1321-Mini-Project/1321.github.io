@@ -16,6 +16,40 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// 라이트 모드
+$("#lightBtn").click(function () {
+    $(".card").css("background-color", "#ffffff");
+    $(".card").css("color", "#000000");
+    $("body").css("background-color", "#f8f9fa");
+});
+
+// 다크 모드 카드 배경색
+$("#darkBtn").click(function () {
+    $(".card").css("background-color", "#333333");
+    $(".card").css("color", "#ffffff");
+    $("body").css("background-color", "#222222");
+});
+
+
+//팀 소개 버튼 클릭
+$("#teamIntroBtn").click(function () {
+    const $teamName = $("#teamName");
+    const $teamIntro = $("#teamIntro");
+
+    // 1초 동안 팀 이름 숨기기
+    $teamName.fadeOut(500, function () {
+        // 팀 소개 표시
+        $teamIntro.fadeIn(500, function () {
+            // 3초 뒤 팀 소개 숨기기
+            setTimeout(() => {
+                $teamIntro.fadeOut(500, function () {
+                    // 다시 팀 이름 표시
+                    $teamName.fadeIn(500);
+                });
+            }, 2000);
+        });
+    });
+});
 
 // 데이터 읽기 및 카드 생성
 $(".guest_book_container").empty();
@@ -25,9 +59,24 @@ querySnapshot.forEach((doc) => {
 
     let guest_book_name = doc.data().guest_book_name;
     let guest_book_content = doc.data().guest_book_content;
-    let encrypted_password = "⭐".repeat(doc.data().encrypted_password);
+    let guest_book_id = doc.id;
 
-    let tempHtml = `여기에 방명록 추가`;
+    let tempHtml = ` 
+            <div id="guestBookCont">
+                <div id="guestBookInfo" class="row g-3">
+                    <input type="hidden" class="form-control" id="passwd" placeholder="비밀번호">
+                    <div class="col-sm-2">
+                        <p class="guest_book_name">${guest_book_name}</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <p class="guest_book_name">${guest_book_content}</p>
+                    </div>
+                    <div class="col-sm-2">
+                        <button class="btn btn-primary mb-3 " id="guest_book_modi" data-id="${guest_book_id}">수정</button>
+                        <button class="btn btn-secondary mb-3 " id="guest_book_del" data-id="${guest_book_id}">삭제</button>
+                    </div>
+                </div>
+            </div>`;
     $(".guest_book_container").append(tempHtml);
 });
 
@@ -67,10 +116,28 @@ $('#guest_book_save_btn').click(async function () {
     await saveGuestBook(guestBookData);
 });
 
-$('#guest_book_edit_btn').click(async function () {
+$('#guest_book_modi').click(async function () {
     const guestBookDiv = event.target.closest(".guestbook_entry"); // 클릭된 항목 가져오기
-    const guestBookId = entryDiv.dataset.id;
-    let input_password = $("guest_book_edit_pw");
+    const guestBookId = $(this).get().id;
+    if(matchPassword()){
+        //비밀번호가 일치하면 해당 글을 input에 출력
+        await updateGuestBook(guestBookDiv, guestBookId);
+    }
+});
+
+$('#guest_book_del').click(async function () {
+    const guestBookDiv = event.target.closest(".guestbook_entry"); // 클릭된 항목 가져오기
+    const guestBookId = $(this).get().id;
+    if(matchPassword(guestBookId)){
+        //비밀번호가 일치하면 해당 글을 input에 출력
+        await deleteGuestBook(guestBookId);
+    }
+});
+
+async function matchPassword(guestBookId){
+
+    let inputpassword = await getPassword();
+    console.log(inputpassword);
     try {
         //Firestore에서 해당 방명록 조회
         const doc = await db.collection('guest_book').doc(guestBookId).get();
@@ -78,13 +145,11 @@ $('#guest_book_edit_btn').click(async function () {
         if (!doc.exists) {
             console.error("Entry not found!");
             alert("해당 글을 찾을 수 없습니다.");
-            return;
+            return false;
         }
 
-        const guessBookData = doc.data();
-
         //입력된 비밀번호 암호화
-        input_password = await crypto.subtle.digest(
+        let input_password = await crypto.subtle.digest(
             'SHA-256',
             new TextEncoder().encode(inputPassword)
         );
@@ -98,17 +163,55 @@ $('#guest_book_edit_btn').click(async function () {
         if (data.password !== password_str) {
             console.error("Password mismatch!");
             alert("비밀번호가 일치하지 않습니다.");
-            return;
+            return false;
         }
 
-        //비밀번호가 일치하면 해당 글을 input에 출력
-        await updateGuestBook(guestBookDiv, guestBookId, password_str);
-
+        return true;
     } catch (error) {
         console.error("Error deleting entry:", error);
         alert("글 삭제 중 오류가 발생했습니다.");
     }
-});
+}
+
+async function getPassword() {
+
+
+    return new Promise((resolve, reject) => {
+        $("#passwd").submit(function (event) {
+            event.preventDefault(); // 폼 기본 동작 막기
+
+            const inputPassword = $("#inputPassword").val(); // 입력된 비밀번호 가져오기
+            if (!inputPassword) {
+                alert("비밀번호를 입력하세요.");
+                reject("비밀번호가 비어 있습니다.");
+                return;
+            }
+
+            // 길이 확인
+            if (inputPassword.length !== 6) {
+                alert("비밀번호의 길이는 6자리여야 합니다!");
+                reject("비밀번호 길이 오류");
+                return;
+            }
+
+            // 숫자인지 확인
+            for (let i = 0; i < inputPassword.length; i++) {
+                const char = inputPassword[i];
+                if (char < '0' || char > '9') {
+                    alert("비밀번호는 숫자여야 합니다!");
+                    reject("비밀번호 형식 오류");
+                    return;
+                }
+            }
+
+            // 입력된 비밀번호 반환
+            resolve(inputPassword);
+        });
+    });
+}
+
+
+
 
 // 데이터 추가
 async function saveGuestBook(guestBookData) {
@@ -141,7 +244,7 @@ async function saveGuestBook(guestBookData) {
 
 
 //방명록 삭제
-async function deleteGuestBook(guestBookId, inputPassword) {
+async function deleteGuestBook(guestBookId) {
     try {
         //Firestore에서 해당 방명록 조회
         const doc = await db.collection('guest_book').doc(guestBookId).get();
@@ -152,27 +255,6 @@ async function deleteGuestBook(guestBookId, inputPassword) {
             return;
         }
 
-        const data = doc.data();
-
-        //입력된 비밀번호 암호화
-        const input_password = await crypto.subtle.digest(
-            'SHA-256',
-            new TextEncoder().encode(inputPassword)
-        );
-
-        //암호화된 비밀번호 String형식 16진수로 변환
-        const password_str = Array.from(new Uint8Array(inputPassword))
-            .map(byte => byte.toString(16).padStart(2, '0'))
-            .join('');
-
-        //저장된 비밀번호와 비교
-        if (data.password !== password_str) {
-            console.error("Password mismatch!");
-            alert("비밀번호가 일치하지 않습니다.");
-            return;
-        }
-
-        //비밀번호가 일치하면 삭제
         await db.collection('guest_book').doc(guestBookId).delete();
         console.log("Entry deleted successfully!");
         alert("글이 성공적으로 삭제되었습니다.");

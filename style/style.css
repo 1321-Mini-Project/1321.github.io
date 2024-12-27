@@ -12,10 +12,27 @@ body {
     margin: 0;
     padding: 0;
     background-color: #f9f9f9;
+    transition: background-color 1s ease;
 }
 /*-----공통-----*/
 
 /*-----Title-----*/
+.header {
+    position: absolute;
+    top: 10px; /* 상단 여백 */
+    left: 10px; /* 좌측 여백 */
+}
+
+#lightBtn {
+    background-color: #f9f9f9;
+    color: #000000;
+}
+
+#darkBtn {
+    background-color: #333333;
+    color: #ffffff;
+}
+
 .title {
     height: 250px;
     color: black;
@@ -23,7 +40,6 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-image: url('');
     background-position: center;
     background-size: cover;
 }
@@ -38,9 +54,45 @@ body {
     margin: 30px auto 0px auto;
     margin-top: 20px;
 }
+
+#teamIntroBtn {
+    background: linear-gradient(45deg, #ff6b6b, #ffdd59);
+    background-size: 300% 300%;
+    color: white;
+    font-size: 16px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    animation: gradientMove 3s infinite linear; /* 배경 애니메이션 */
+}
+
+#teamIntroBtn:hover {
+    transform: scale(1.1);
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes gradientMove {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+
 /*-----Title-----*/
 
 /*-----Member Intro-----*/
+.card{
+    transition: background-color 1s ease;
+}
+
 .member {
     width: 1700px;
     margin: 20px auto 0px auto;
@@ -111,9 +163,6 @@ header h1 {
 #pwdDiv {
     margin: 0px 5px 0px 0px;
 }
-
-
-
 
 /*
 
