@@ -113,7 +113,6 @@ $('#guest_book_edit_btn').click(async function () {
 // 데이터 추가
 async function saveGuestBook(guestBookData) {
 
-    // title_input, comment_input, image_input id를 가진 HTML 요소에서 값을 가져와서 title, comment, image 변수에 저장해 주세요.
     let {guest_book_name, guest_book_content, guest_book_password, guest_book_timestamp} = guestBookData;
 
     const encrypted_password = await crypto.subtle.digest(
@@ -127,7 +126,6 @@ async function saveGuestBook(guestBookData) {
 
     try {
         const docRef = await addDoc(collection(db, "guest_book"), {
-            // 각각 담은 변수를 컬렉션 필드에 title, comment, image에 각각 넣어주세요.
             'guest_book_name': guest_book_name,
             'guest_book_content': guest_book_content,
             'guest_book_password': password_str,
