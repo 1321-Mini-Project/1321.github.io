@@ -22,7 +22,7 @@
     - 기능소개
 
 
-## [프로젝트 팀 발표 영상 링크]()
+## [프로젝트 팀 발표 영상 링크](https://youtu.be/ShgS2u2WamQ)
 
 ## [프로젝트 팀 발표 PPT링크](https://docs.google.com/presentation/d/1XPSB4Y7quHe5JegZDKowgFMdQEkvUG_d/edit?usp=sharing&ouid=104332909191567928312&rtpof=true&sd=true)
 
