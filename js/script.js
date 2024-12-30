@@ -3,22 +3,12 @@ import {getFirestore} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-f
 import {collection, addDoc} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import {getDocs} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import {doc, getDoc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBwVoNHZU4uG5DqKA-rT8X_adR7kIRCcR8",
-    authDomain: "team-page-1321.firebaseapp.com",
-    projectId: "team-page-1321",
-    storageBucket: "team-page-1321.firebasestorage.app",
-    messagingSenderId: "175896196388",
-    appId: "1:175896196388:web:49b76903cf922549b5afb1",
-    measurementId: "G-7514TVG9G9"
-};
+import firebaseConfig from './config.js';
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 function setMode(mode) {
-    
     //라이트 모드
     if (mode === "light") {
         $(".card").css("background-color", "#ffffff");
@@ -36,6 +26,7 @@ function setMode(mode) {
     localStorage.setItem("theme", mode); // 현재 모드 상태 저장
 }
 
+//현재 모드 상태로 세팅
 document.addEventListener("DOMContentLoaded", function () {
     const savedMode = localStorage.getItem("theme") || "light"; // 기본값은 "light"
     setMode(savedMode);
@@ -51,7 +42,6 @@ $("#lightBtn").click(function () {
 $("#darkBtn").click(function () {
     setMode("dark");
 });
-
 
 //팀 소개 버튼 클릭
 $("#teamIntroBtn").click(function () {
@@ -74,7 +64,6 @@ $("#teamIntroBtn").click(function () {
 });
 
 // 데이터 읽기 및 카드 생성
-
 //timestamp를 기준으로 내림차순 정렬한 데이터 값 
 $(".guest_book_container").empty();
 const q = query(
@@ -208,7 +197,6 @@ $(document).on("click", "#guest_book_del", async function () {
         }
     }
 
-
     if (await matchPassword(guestBookId, guestBookPw)) {
         //비밀번호가 일치하면 해당 글 삭제
         deleteGuestBook(guestBookId);
@@ -245,13 +233,11 @@ async function matchPassword(guestBookId, guestBookPw){
             alert("비밀번호가 일치하지 않습니다.");
             return false;
         }
-        
-        
         //일치하면 true 반환
         return true;
     } catch (error) {
         console.error("Error deleting :", error);
-        alert("글 삭제 중 오류가 발생했습니다.");
+        alert("글 수정, 삭제 중 오류가 발생했습니다.");
     }
 }
 
