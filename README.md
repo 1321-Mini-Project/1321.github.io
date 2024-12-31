@@ -21,6 +21,7 @@
 
     - 기능소개
 
+## [팀 페이지 링크](https://1321-mini-project.github.io/1321.github.io/)
 
 ## [프로젝트 팀 발표 영상 링크](https://youtu.be/ShgS2u2WamQ)
 
